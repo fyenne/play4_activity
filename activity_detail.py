@@ -83,14 +83,19 @@ def run_python(start_day, end_day):
     df = get_hour(df) 
 
 
-    df[['ou_code', 'ou_name', 'bg_code', 'bg_name_cn', 'customer_id',
+    df = df[['ou_code', 'ou_name', 'bg_code', 'bg_name_cn', 'customer_id',
         'customer_name', 'hour',
         'wms_warehouse_id', 'user_id', 'activity_type', 'activity_sub_type',
         'activity_start_time', 'activity_end_time', 'lpn', 'sku_code',
         'order_id', 'from_location', 'to_location', 'qty', 'create_time',
         'activity_id', 'inc_day',
         'time_gap_inner','time_gap_outer','time_gap_today',
-        'activity_start_time_hour', 'activity_end_time_hour', 'create_time_hour']] 
+        'activity_start_time_hour', 'activity_end_time_hour', 'create_time_hour']]
+
+    df = spark.createDataFrame(df)
+    df.show(11, False)
+    df.createOrReplaceTempView("df")
+ 
 
     print("=================================data_prepare================================")
 

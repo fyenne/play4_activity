@@ -224,6 +224,9 @@ def run_etl(tables, today):
         """
 
         sql_final = (sql_upper + sql_long + sql_miche + sql_tail).replace('\n', '')
+        
+        print("=================================0================================")
+        print(sql_final)
         spark.sql(sql_final)
 
 def main():

@@ -54,9 +54,9 @@ def run_python(start_day, end_day):
         """
         前一个activity到后一个activity相差的时间\.
         """
-        df = df.sort_values('activity_start_time')
+        df = df.sort_values('activity_end_time')
         df['time_gap_outer'] = df\
-            .groupby(['user_id','inc_day'], dropna = False)['activity_start_time'].transform('diff')
+            .groupby(['user_id','inc_day'], dropna = False)['activity_end_time'].transform('diff')
         df['time_gap_outer'] = df['time_gap_outer'].fillna(timedelta(0)).apply(timedelta.total_seconds)
         df['time_gap_outer'] = [0 if i< 0 else i for i in df['time_gap_outer']]
 
@@ -65,7 +65,7 @@ def run_python(start_day, end_day):
         """
         mid1 = df.groupby(['inc_day', 'user_id']).agg(
             a = ('activity_start_time','min'), 
-            b  = ('activity_start_time', 'max'))\
+            b  = ('activity_end_time', 'max'))\
                 [['a','b']].diff(axis = 1)['b'].apply(timedelta.total_seconds).reset_index()
         mid1.columns = ['inc_day','user_id','time_gap_today']
         df = df.merge(mid1, on = ['inc_day', 'user_id'], how = 'left')
@@ -87,7 +87,8 @@ def run_python(start_day, end_day):
     df.head()
  
 
-    df = df[['ou_code',\
+    df = df[[
+        'ou_code',\
         'wms_warehouse_id',\
         'user_id',\
         'activity_type',\
@@ -126,8 +127,10 @@ def run_python(start_day, end_day):
     df = spark.createDataFrame(df)
     df.show(11, False)
     df.createOrReplaceTempView("df")
-    spark.sql("""insert overwrite 
-    """)
+    spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_activity_summary_di partition(inc_day, src)
+    select * from df 
+    where inc_day = '20211017'
+    """).show()
 
 
     print("=================================data_prepare================================")

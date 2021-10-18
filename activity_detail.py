@@ -128,8 +128,7 @@ def run_python(start_day, end_day):
     df.show(11, False)
     df.createOrReplaceTempView("df")
     spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_activity_summary_di partition(inc_day, src)
-    select * from df 
-    where inc_day = '20211017'
+    select * from df  
     """).show()
 
 

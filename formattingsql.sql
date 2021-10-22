@@ -1,646 +1,26 @@
 SET tez.queue.name=root.dsc;
 SET hive.execution.engine=tez;
 
-INSERT OVERWRITE TABLE tmp_dsc_dwd.dwd_dsc_wh_activity_di partition (inc_day='$[time(yyyyMMdd)]', src='scale')
-SELECT  a.wms_warehouse_id
-       ,user_id
-       ,activity_type
-       ,activity_sub_type
-       ,from_unixtime( cast( unix_timestamp(activity_start_time) + 28800 AS bigint ),'yyyy-MM-dd HH:mm:ss' )                    AS activity_start_time
-       ,activity_end_time
-       ,lpn
-       ,sku_code
-       ,order_id
-       ,from_location
-       ,to_location
-       ,qty
-       ,from_unixtime( cast( unix_timestamp(create_time) + 28800 AS bigint ),'yyyy-MM-dd HH:mm:ss' )                            AS create_time
-       ,cast(internal_container_num                                                                                             AS bigint)
-       ,internal_id
-       ,activity_id
-       ,cast(hh + 8 AS bigint)                                                                                                  AS hh
-       ,a.data_source
-       ,a.wms_company_id
-       ,gcd.description                                                                                                         AS transaction_type
-       ,transaction_code
-       ,CASE WHEN activity_type is null THEN CASE
-             WHEN substr(activity_sub_type,1,4) = 'Ship' THEN 'Shipping'
-             WHEN activity_sub_type = 'Receipt' THEN 'Receiving'  ELSE CASE
-             WHEN gcd.description = 'Inventory status change' THEN 'Inventory status change'
-             WHEN gcd.description = 'Inventory adjustment' THEN 'Inventory Management'
-             WHEN gcd.description = 'Check In' THEN 'Receiving '
-             WHEN gcd.description = 'Inventory transfer' THEN 'Inventory Movement'  ELSE 'Misc' END END  ELSE activity_type END AS standard_activity_type
-       ,rel.ou                                                                                                                  AS ou_code
-FROM
-(
-	SELECT  CASE WHEN substr(work_zone,1,2) = 'OE' THEN 'OE'
-	             WHEN substr(work_zone,1,2) = 'RT' THEN 'RT'
-	             WHEN substr(work_zone,1,2) = 'la' THEN 'OE'  ELSE 'UNKNOWN' END AS wms_warehouse_id
-	       ,user_name                                                            AS user_id
-	       ,work_group                                                           AS activity_type
-	       ,work_type                                                            AS activity_sub_type
-	       ,activity_date_time                                                   AS activity_start_time
-	       ,null                                                                 AS activity_end_time
-	       ,container_id                                                         AS lpn
-	       ,item                                                                 AS sku_code
-	       ,reference_id                                                         AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END   AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END   AS to_location
-	       ,quantity                                                             AS qty
-	       ,activity_date_time                                                   AS create_time
-	       ,cast(internal_container_num AS bigint)                               AS internal_container_num
-	       ,cast(internal_id AS bigint)                                          AS internal_id
-	       ,internal_key_id                                                      AS activity_id
-	       ,date_format(activity_date_time,'HH')                                 AS hh
-	       ,'ods_cn_michelin'                                                    AS data_source
-	       ,company                                                              AS wms_company_id
-	       ,transaction_type
-	       ,null                                                                 AS transaction_code
-	FROM ods_cn_michelin.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_bose'                                                      AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_bose.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_apple_sz'                                                  AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_apple_sz.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_apple_sh'                                                  AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_apple_sh.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_costacoffee'                                               AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_costacoffee.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_diadora'                                                   AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_diadora.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_ferrero'                                                   AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_ferrero.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_fuji'                                                      AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_fuji.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_hd'                                                        AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_hd.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_hp_ljb'                                                    AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_hp_ljb.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_hpi'                                                       AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_hpi.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_hualiancosta'                                              AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_hualiancosta.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_jiq'                                                       AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_jiq.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_kone'                                                      AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_kone.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_razer'                                                     AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_razer.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_squibb'                                                    AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_squibb.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_vzug'                                                      AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_vzug.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_cn_zebra'                                                     AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_cn_zebra.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_dbo'                                                          AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_dbo.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_hk_abbott'                                                    AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_hk_abbott.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_hk_revlon'                                                    AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_hk_revlon.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-	UNION ALL
-	SELECT  warehouse                                                          AS wms_warehouse_id
-	       ,user_name                                                          AS user_id
-	       ,work_group                                                         AS activity_type
-	       ,work_type                                                          AS activity_sub_type
-	       ,activity_date_time                                                 AS activity_start_time
-	       ,null                                                               AS activity_end_time
-	       ,container_id                                                       AS lpn
-	       ,item                                                               AS sku_code
-	       ,reference_id                                                       AS order_id
-	       ,CASE WHEN direction = 'From' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS from_location
-	       ,CASE WHEN direction = 'To' THEN location
-	             WHEN coalesce(direction,'') = '' THEN location  ELSE null END AS to_location
-	       ,quantity                                                           AS qty
-	       ,activity_date_time                                                 AS create_time
-	       ,cast(internal_container_num AS bigint)                             AS internal_container_num
-	       ,cast(internal_id AS bigint)                                        AS internal_id
-	       ,internal_key_id                                                    AS activity_id
-	       ,date_format(activity_date_time,'HH')                               AS hh
-	       ,'ods_hk_fredperry'                                                 AS data_source
-	       ,company                                                            AS wms_company_id
-	       ,transaction_type
-	       ,null                                                               AS transaction_code
-	FROM ods_hk_fredperry.transaction_history
-	WHERE inc_day = '$[time(yyyyMMdd)]' 
-) AS a
-LEFT JOIN dsc_dim.dim_dsc_ou_whse_rel rel
-ON lower(a.wms_warehouse_id) = lower(rel.wms_warehouse_id) AND lower(coalesce(a.wms_company_id, '')) = lower(coalesce(rel.company_id , ''))
-LEFT JOIN ods_cn_bose.generic_config_detail gcd
-ON gcd.record_type='HIST TR TY' AND a.transaction_type = gcd.identifier
--- Inventory status change --Inventory Status Change
--- Inventory adjustment --Inventory Management
--- Check IN -- Receiving
--- Inventory transfer -- Inventory Movement
+INSERT OVERWRITE TABLE dsc_dwd.dwd_dsc_wh_activity_di 
+partition (inc_day='$[time(yyyyMMdd)]', src='scale')
 
-
-
-"""
-activity try to merge two lines of same act to one, 
-it would lost info related to lpn, internal_id and so on 
-## this is an example /.
-"""
-
-select 
+ SELECT
  wms_warehouse_id,
  user_id,
  activity_type,
  activity_sub_type,
  activity_start_time,
  activity_end_time,
- max(lpn) lpn,
+ lpn,
  sku_code,
  order_id,
-max(from_location) from_location,
- max(to_location) to_location,
- qty,
+ from_location,
+ to_location,
+ sum(qty) as qty,
  create_time,
-internal_container_num,
+ internal_container_num,
  max(internal_id) internal_id,   
- activity_id,
+ max(activity_id) activity_id,
  hh,
  data_source,
  wms_company_id,
@@ -648,30 +28,507 @@ internal_container_num,
  transaction_code,
  standard_activity_type,
  ou_code,
- nbr_of_cases
-from
-dsc_dwd.dwd_dsc_wh_activity_di 
-where inc_day = '20211021'
-and src = 'scale'
-and activity_start_time = '2021-10-21 09:17:16'
+ nbr_of_cases,
+ inc_day,
+ src
  
-group by 
-wms_warehouse_id,
+
+
+
+FROM  
+(
+select 
+ a.wms_warehouse_id,
  user_id,
  activity_type,
  activity_sub_type,
- activity_start_time,
+ from_unixtime(
+                cast(
+                    unix_timestamp(activity_start_time) + 28800 as bigint
+                ),
+                'yyyy-MM-dd HH:mm:ss'
+            ) as activity_start_time,
  activity_end_time,
+ lpn,
  sku_code,
- order_id,qty,
- create_time,
-internal_container_num,
-activity_id,
- hh,
- data_source,
- wms_company_id,
- transaction_type,
+ order_id,
+ from_location,
+ to_location,
+ qty,
+ from_unixtime(
+                cast(
+                    unix_timestamp(create_time) + 28800 as bigint
+                ),
+                'yyyy-MM-dd HH:mm:ss'
+            ) as create_time,
+ cast(internal_container_num as bigint) as internal_container_num 
+,
+ internal_id,
+ activity_id,
+ cast(hh + 8 as bigint) as hh,
+ a.data_source,
+ a.wms_company_id,
+ gcd.description as transaction_type,
  transaction_code,
- standard_activity_type,
- ou_code,
- nbr_of_cases
+case 
+    when activity_type is null
+    then 
+        case 
+            when substr(activity_sub_type, 1,4) = 'Ship'
+            then 'Shipping'
+            when activity_sub_type = 'Receipt'
+            then 'Receiving'
+        		else 
+            		case 
+                		when gcd.description = 'Inventory status change'
+                		then 'Inventory status change'
+                		when gcd.description = 'Inventory adjustment'
+                		then 'Inventory Management'
+                		when gcd.description = 'Check In'
+                		then 'Receiving '
+                        when gcd.description = 'Inventory transfer'
+                        then 'Inventory Movement'
+                		else 'Misc'
+            		end
+       		 end
+    else activity_type  
+ end as
+ standard_activity_type
+ , rel.ou as ou_code 
+ , null as nbr_of_cases
+
+ , date_format(from_unixtime(
+                cast(
+                    unix_timestamp(activity_start_time) + 28800 as bigint
+                ),
+                'yyyy-MM-dd HH:mm:ss'
+            ), 'yyyyMMdd') as inc_day
+ , 'scale' as src
+from 
+ (select 
+ case when substr(work_zone, 1,2) = 'OE'
+ then 'OE' 
+ when substr(work_zone, 1,2) = 'RT'
+ then 'RT'
+  when substr(work_zone, 1,2) = 'la'
+ then 'OE' 
+ else 'UNKNOWN'
+ end as wms_warehouse_id 
+ , user_name as user_id ,work_group as activity_type , work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id 
+ , case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location   
+ , quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh
+ , 'scale_michelin' as data_source
+ , company as wms_company_id, transaction_type , null as transaction_code
+ 
+from ods_cn_michelin.transaction_history
+  where inc_day between '20210908' and '20211021'  
+ union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_bose' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_bose.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_apple_sz' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+ from ods_cn_apple_sz.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_apple_sh' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_apple_sh.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_costacoffee' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_costacoffee.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_diadora' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_diadora.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_ferrero' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_ferrero.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_fuji' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_fuji.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hd' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_hd.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hp_ljb' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_hp_ljb.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hpi' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_hpi.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hualiancosta' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_hualiancosta.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_jiq' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_jiq.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_kone' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_kone.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_razer' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_razer.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_squibb' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_squibb.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_vzug' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_vzug.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_zebra' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_cn_zebra.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , internal_id  as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_fas' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_dbo.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hk_abbott' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_hk_abbott.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hk_revlon' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_hk_revlon.transaction_history   where inc_day between '20210908' and '20211021'  union all
+ select warehouse as wms_warehouse_id , user_name as user_id ,work_group as activity_type ,work_type as activity_sub_type , activity_date_time as activity_start_time ,null as activity_end_time , container_id as lpn ,item as sku_code ,reference_id as order_id, 
+  case when direction = 'From'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as from_location 
+ , case when direction = 'To'
+   then location 
+   when coalesce(direction, '') = ''
+   then location
+   else null
+   end as to_location,  quantity as qty , activity_date_time as create_time ,cast(internal_container_num as bigint) as internal_container_num 
+  , cast(internal_id as bigint) as  internal_id  ,internal_key_id as activity_id  , date_format(activity_date_time,'HH') as hh, 'scale_hk_fredperry' as data_source, company as wms_company_id, transaction_type , null as transaction_code 
+from ods_hk_fredperry.transaction_history  where inc_day between '20210908' and '20211021'
+ )
+ as a
+
+ left join
+    dsc_dim.dim_dsc_ou_whse_rel rel
+    on lower(a.wms_warehouse_id) = lower(rel.wms_warehouse_id)
+    and 
+    lower(coalesce(a.wms_company_id,'')) = lower(coalesce(rel.company_id ,''))
+ left join 
+ ods_cn_bose.generic_config_detail  gcd
+ on gcd.record_type='HIST TR TY'
+ and a.transaction_type = gcd.identifier
+ 
+
+ ) b
+
+group by
+wms_warehouse_id, user_id, activity_type, activity_sub_type,
+activity_start_time,activity_end_time,lpn,sku_code,order_id,from_location,to_location,create_time,
+internal_container_num, hh,data_source,wms_company_id,transaction_type,transaction_code,
+standard_activity_type,ou_code, nbr_of_cases, inc_day,src
+ 
+
+
+
+-- """
+-- activity try to merge two lines of same act to one, 
+-- it would lost info related to lpn, internal_id and so on 
+-- ## this is an example /.
+-- """
+
+-- select 
+--  wms_warehouse_id,
+--  user_id,
+--  activity_type,
+--  activity_sub_type,
+--  activity_start_time,
+--  activity_end_time,
+--  max(lpn) lpn,
+--  sku_code,
+--  order_id,
+-- max(from_location) from_location,
+--  max(to_location) to_location,
+--  qty,
+--  create_time,
+-- internal_container_num,
+--  max(internal_id) internal_id,   
+--  activity_id,
+--  hh,
+--  data_source,
+--  wms_company_id,
+--  transaction_type,
+--  transaction_code,
+--  standard_activity_type,
+--  ou_code,
+--  nbr_of_cases
+-- from
+-- dsc_dwd.dwd_dsc_wh_activity_di 
+-- where inc_day = '20211021'
+-- and src = 'scale'
+-- and activity_start_time = '2021-10-21 09:17:16'
+ 
+-- group by 
+-- wms_warehouse_id,
+--  user_id,
+--  activity_type,
+--  activity_sub_type,
+--  activity_start_time,
+--  activity_end_time,
+--  sku_code,
+--  order_id,qty,
+--  create_time,
+--  internal_container_num,
+--  activity_id,
+--  hh,
+--  data_source,
+--  wms_company_id,
+--  transaction_type,
+--  transaction_code,
+--  standard_activity_type,
+--  ou_code,
+--  nbr_of_cases

@@ -615,3 +615,63 @@ ON gcd.record_type='HIST TR TY' AND a.transaction_type = gcd.identifier
 -- Inventory adjustment --Inventory Management
 -- Check IN -- Receiving
 -- Inventory transfer -- Inventory Movement
+
+
+
+"""
+activity try to merge two lines of same act to one, 
+it would lost info related to lpn, internal_id and so on 
+## this is an example /.
+"""
+
+select 
+ wms_warehouse_id,
+ user_id,
+ activity_type,
+ activity_sub_type,
+ activity_start_time,
+ activity_end_time,
+ max(lpn) lpn,
+ sku_code,
+ order_id,
+max(from_location) from_location,
+ max(to_location) to_location,
+ qty,
+ create_time,
+internal_container_num,
+ max(internal_id) internal_id,   
+ activity_id,
+ hh,
+ data_source,
+ wms_company_id,
+ transaction_type,
+ transaction_code,
+ standard_activity_type,
+ ou_code,
+ nbr_of_cases
+from
+dsc_dwd.dwd_dsc_wh_activity_di 
+where inc_day = '20211021'
+and src = 'scale'
+and activity_start_time = '2021-10-21 09:17:16'
+ 
+group by 
+wms_warehouse_id,
+ user_id,
+ activity_type,
+ activity_sub_type,
+ activity_start_time,
+ activity_end_time,
+ sku_code,
+ order_id,qty,
+ create_time,
+internal_container_num,
+activity_id,
+ hh,
+ data_source,
+ wms_company_id,
+ transaction_type,
+ transaction_code,
+ standard_activity_type,
+ ou_code,
+ nbr_of_cases

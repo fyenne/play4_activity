@@ -10,7 +10,7 @@ from datetime import date, datetime
 import argparse
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import * 
-
+from MergeDataFrameToTable import MergeDFToTable
 spark = SparkSession.builder.enableHiveSupport().getOrCreate() 
  
 import sys 
@@ -31,6 +31,8 @@ def run_etl(start_date, end_date):
         """
     print(sql)
     coach = spark.sql(sql).select("*").toPandas()
+    print("==================================gigi================================")
+    print(coach.head())
     def data_prepare(coach):     
         """
         time unix convert, 
@@ -60,6 +62,7 @@ def run_etl(start_date, end_date):
                 'sprm': 'sum',
             }
         ).reset_index()
+
         wh['work_hour'] = wh['end_time'] - wh['start_time']
         wh['work_hour_in_min']  = [i.total_seconds()/60 for i in wh['work_hour']]
         wh['work_hour_in_hour'] = [i.total_seconds()/3600 for i in wh['work_hour']]
@@ -81,21 +84,44 @@ def run_etl(start_date, end_date):
         
         return coach
     coach = data_prepare(coach)
-    coach = coach[['worker_name', 'start_date', 'work_group_name', 'up_worker_name', 'hire_time',\
+    coach = coach[['worker_name', 'start_date', 'end_date', 'work_group_name', 'up_worker_name', 'hire_time',\
          'worker_post_name', 'sprm', 'SPRM_total_of_day', 'work_hour_in_min',
-         'work_hour_in_hour', 'sprm_perhour']].drop_duplicates()
+         'work_hour_in_hour', 'sprm_perhour', 'station_name']].drop_duplicates()
     coach['inc_day'] = coach['start_date'].astype(str).str.replace('-', '')
     df = coach
+    print("=================================牛逼=================================")
+    print(df.head())
 
     """
     to bdp
     """
+    # pd to spark table
     spark_df = spark.createDataFrame(df)
+    # spark table as view, aka in to spark env. able to be selected or run by spark sql in the following part.
     spark_df.createOrReplaceTempView("df")
-    spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di 
-    partition by (inc_day)
-    select * from df 
-    """)
+    # 
+    print("=================================spark_df=================================")
+    print(spark_df)
+
+    """
+    merge table preparation:
+    """
+
+    merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
+    if env == 'dev':
+        merge_table = "tmp_" + merge_table
+    
+    inc_df = spark.sql("""select * from df""")
+    print(merge_table)
+    
+    spark.sql("""set spark.hadoop.hive.exec.dynamic.partition.mode=nonstrict""")
+    # (table_name, df, pk_cols, order_cols, partition_cols=None):
+    merge_data = MergeDFToTable(merge_table, inc_df, "worker_name,inc_day", "inc_day", partition_cols="inc_day")
+    merge_data.merge()
+    # spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di 
+    # partition (inc_day)
+    # select * from df 
+    # """)
 
 def main():
     args = argparse.ArgumentParser()
@@ -103,12 +129,14 @@ def main():
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
     args.add_argument("--end_date", help="start date for refresh data, format: yyyyMMdd"
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
+    args.add_argument("--env", help="dev environment or prod environment", default="prod", nargs="*")
 
     args_parse = args.parse_args()
     start_date = args_parse.start_date[0]
     end_date = args_parse.end_date[0]
+    env = args_parse.env[0]
  
-    run_etl(start_date, end_date)
+    run_etl(start_date, end_date, env)
 
     
 if __name__ == '__main__':

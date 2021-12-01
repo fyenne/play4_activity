@@ -16,10 +16,10 @@ spark = SparkSession.builder.enableHiveSupport().getOrCreate()
 import sys 
 
 
-def run_etl(start_date, end_date):
+def run_etl(start_date, end_date ,env):
     # path = './cxm/'
     print("python version here:", sys.version, '\t') 
-    print("=================================葫芦娃================================")
+    print("=================================sysVersion================================")
     print("list dir", os.listdir())
     """
     offline version
@@ -31,7 +31,7 @@ def run_etl(start_date, end_date):
         """
     print(sql)
     coach = spark.sql(sql).select("*").toPandas()
-    print("==================================gigi================================")
+    print("==================================read_table================================")
     print(coach.head())
     def data_prepare(coach):     
         """
@@ -89,7 +89,7 @@ def run_etl(start_date, end_date):
          'work_hour_in_hour', 'sprm_perhour', 'station_name']].drop_duplicates()
     coach['inc_day'] = coach['start_date'].astype(str).str.replace('-', '')
     df = coach
-    print("=================================牛逼=================================")
+    print("===============================data_mani_done================================")
     print(df.head())
 
     """
@@ -100,23 +100,26 @@ def run_etl(start_date, end_date):
     # spark table as view, aka in to spark env. able to be selected or run by spark sql in the following part.
     spark_df.createOrReplaceTempView("df")
     # 
-    print("=================================spark_df=================================")
+    print("==============================spark_df, env=%s!================================="%env)
     print(spark_df)
 
     """
     merge table preparation:
     """
 
-    merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
-    if env == 'dev':
-        merge_table = "tmp_" + merge_table
+
+    merge_table = "tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
+    # if env == 'dev':
+    #     merge_table = "tmp_" + merge_table
     
     inc_df = spark.sql("""select * from df""")
+    print("===============================merge_table=================================")
     print(merge_table)
     
     spark.sql("""set spark.hadoop.hive.exec.dynamic.partition.mode=nonstrict""")
     # (table_name, df, pk_cols, order_cols, partition_cols=None):
-    merge_data = MergeDFToTable(merge_table, inc_df, "worker_name,inc_day", "inc_day", partition_cols="inc_day")
+    merge_data = MergeDFToTable(merge_table, inc_df, \
+        "worker_name,inc_day", "inc_day", partition_cols="inc_day")
     merge_data.merge()
     # spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di 
     # partition (inc_day)
@@ -129,7 +132,7 @@ def main():
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
     args.add_argument("--end_date", help="start date for refresh data, format: yyyyMMdd"
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
-    args.add_argument("--env", help="dev environment or prod environment", default="prod", nargs="*")
+    args.add_argument("--env", help="dev environment or prod environment", default="dev", nargs="*")
 
     args_parse = args.parse_args()
     start_date = args_parse.start_date[0]

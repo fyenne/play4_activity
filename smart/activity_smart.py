@@ -73,7 +73,7 @@ def run_etl(start_date, end_date ,env):
         wh['work_hour_in_hour'] = [i.total_seconds()/3600 for i in wh['work_hour']]
         wh = wh.drop(['end_time','start_time', 'work_hour'], axis = 1).rename({'sprm':'SPRM_total_of_day'}, axis =1)
         coach = coach.merge(wh, on = ['worker_name', 'inc_day'], how = 'inner')
-        coach = coach[coach['duration'] != '0']
+        # coach = coach[coach['duration'] != '0']
         coach = coach[coach['sprm'] != 0]
         coach['sprm_perhour'] =  coach['SPRM_total_of_day'] / coach['work_hour_in_hour']
         """

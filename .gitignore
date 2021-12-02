@@ -5,3 +5,4 @@
 *.pbix
 *.zip
 *.html
+__pycache__/fyenn_class.cpython-38.pyc

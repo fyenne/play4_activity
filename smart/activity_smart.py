@@ -33,43 +33,47 @@ def run_etl(start_date, end_date ,env):
     coach = spark.sql(sql).select("*").toPandas()
     print("==================================read_table================================")
     print(coach.head())
-    def data_prepare(coach):     
+    def data_prepare(coach):
+
         """
         time unix convert, 
         转换后标准时长换算成秒,
         sprm 计算.
         工作在勤时间
         """
-        coach = coach.dropna(how = 'all', axis = 1)
+        # coach = pd.read_csv('./data/coach1129_1202.csv', sep = '\001')
+        # coach = coach.dropna(how = 'all', axis = 1)
+        # coach.columns = [re.sub('\w+\.', '', i) for i in list(coach.columns)]
         
-        # time_convert()
+        coach = coach.drop('raw_data', axis = 1)
         def time_convert(col):
             coach[col] = coach[col].astype(int)
             coach[col] = [datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S') for i in coach[col]]
             return coach
-        for i in ['start_time', 'end_time', 'hire_time', 'update_time']:
+        for i in ['start_time', 'end_time', 'hire_time']:
             time_convert(i)
         coach['start_time'] = pd.to_datetime(coach['start_time'])
-        coach['end_time']   = pd.to_datetime(coach['end_time'])
-        # coach['duration'] =  coach['end_time'] - coach['start_time']
+        coach['end_time']   = pd.to_datetime(coach['end_time']) 
+        coach = coach[~coach['work_content'].isna()]
+        coach = coach[coach['work_content'] != '无效时间']
+        coach = coach[coach['worker_post_name'] != '操作经理']
+        # sprm calculation
         coach['sprm'] = (60/coach['work_content_refer']).replace([np.inf, -np.inf], 0)
-        
-        # inner join get work hour and sprm_in_total.
-        wh = coach.groupby(['worker_name','start_date']).agg(
+    
+        wh = coach.groupby(['worker_name','inc_day']).agg(
             {
                 'start_time': 'min',
                 'end_time': 'max',
                 'sprm': 'sum',
             }
         ).reset_index()
-
+        
         wh['work_hour'] = wh['end_time'] - wh['start_time']
         wh['work_hour_in_min']  = [i.total_seconds()/60 for i in wh['work_hour']]
         wh['work_hour_in_hour'] = [i.total_seconds()/3600 for i in wh['work_hour']]
         wh = wh.drop(['end_time','start_time', 'work_hour'], axis = 1).rename({'sprm':'SPRM_total_of_day'}, axis =1)
-        coach = coach.merge(wh, on = ['worker_name', 'start_date'], how = 'inner')
-        # coach = coach[coach['duration'] != '0']
-        # 分数为零的就直接删除吧? 毕竟效率分析用不上该条数据了.
+        coach = coach.merge(wh, on = ['worker_name', 'inc_day'], how = 'inner')
+        coach = coach[coach['duration'] != '0']
         coach = coach[coach['sprm'] != 0]
         coach['sprm_perhour'] =  coach['SPRM_total_of_day'] / coach['work_hour_in_hour']
         """
@@ -84,10 +88,12 @@ def run_etl(start_date, end_date ,env):
         
         return coach
     coach = data_prepare(coach)
-    coach = coach[['worker_name', 'start_date', 'end_date', 'work_group_name', 'up_worker_name', 'hire_time',\
-         'worker_post_name', 'sprm', 'SPRM_total_of_day', 'work_hour_in_min',
-         'work_hour_in_hour', 'sprm_perhour', 'station_name']].drop_duplicates()
-    coach['inc_day'] = coach['start_date'].astype(str).str.replace('-', '')
+
+
+    coach_out = coach[['worker_name', 'work_group_name', 'up_worker_name', 'hire_time',\
+            'worker_post_name', 'SPRM_total_of_day', 'work_hour_in_min',
+            'work_hour_in_hour', 'sprm_perhour', 'station_name', 'inc_day']].drop_duplicates()
+    coach_out['inc_day'] = coach_out['inc_day'].astype(str)
     df = coach
     print("===============================data_mani_done================================")
     print(df.head())

@@ -114,9 +114,9 @@ def run_etl(start_date, end_date ,env):
     """
 
 
-    merge_table = "tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
-    # if env == 'dev':
-    #     merge_table = "tmp_" + merge_table
+    merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
+    if env == 'dev':
+        merge_table = "tmp_" + merge_table
     
     inc_df = spark.sql("""select * from df""")
     print("===============================merge_table=================================")
@@ -127,10 +127,7 @@ def run_etl(start_date, end_date ,env):
     merge_data = MergeDFToTable(merge_table, inc_df, \
         "worker_name,inc_day", "inc_day", partition_cols="inc_day")
     merge_data.merge()
-    # spark.sql("""insert overwrite table tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di 
-    # partition (inc_day)
-    # select * from df 
-    # """)
+    
 
 def main():
     args = argparse.ArgumentParser()

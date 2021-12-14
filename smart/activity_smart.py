@@ -27,6 +27,7 @@ def run_etl(start_date, end_date ,env):
     sql = """
         SELECT * FROM dm_dsc_smart.dwd_task
         where substr(station_name, 1,4) = 'COAC' 
+        or substr(station_name, 1,4) = 'SIEM'
         and inc_day between '""" + start_date + "' and '" + end_date + """'
         """
     print(sql)

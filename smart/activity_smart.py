@@ -22,44 +22,63 @@ def run_etl(start_date, end_date ,env):
     print("=================================sysVersion================================")
     print("list dir", os.listdir())
     """
-    offline version
+    表一: 人天表. 总
+    表二: 动作人表. 分
     """
     sql = """
-        SELECT * FROM dm_dsc_smart.dwd_task
-        and inc_day between '""" + start_date + "' and '" + end_date + """'
+        SELECT 
+        worker_name,
+        inc_day, 
+        station_name, 
+        work_group_name, 
+        hire_time,
+        min(start_time) as start_time, 
+        max(end_time) as end_time, 
+        sum(duration) as duration, 
+        sum(adjusted_duration) as adjusted_duration, 
+        coalesce(sum(60/work_content_refer), 0) as sprm 
+        FROM dm_dsc_smart.dwd_task
+        where inc_day between '""" + start_date + "' and '" + end_date + """'
+        and work_content != ''
+        and work_content != '无效时间'
+        group by 
+        worker_name, 
+        inc_day, 
+        station_name, 
+        work_group_name,
+        hire_time
         """
     print(sql)
     coach = spark.sql(sql).select("*").toPandas()
 
     sql2 = """
-    SELECT
-    station_name,
-    work_content,
-    worker_name,
-    work_group_name,
-    up_worker_name,
-    worker_level_name,
-    sum(duration) as duration,
-    sum(duration) / 3600 as duration_in_hour,
-    sum(work_num) as work_num_sum,
-    count(0) as work_content_cnt,
-    coalesce(sum(60/work_content_refer), 0) as sprm_sum,
-    inc_day
-    FROM
-    dm_dsc_smart.dwd_task
-    where
-    and duration != 0
-    and work_content not in ('无效时间', '转换时间')
-    and inc_day between '""" + start_date + "' and '" + end_date + """'
-    group by
-    station_name,
-    work_content,
-    worker_name,
-    work_group_name,
-    up_worker_name,
-    worker_level_name,
-    inc_day 
-    """
+        SELECT
+        station_name,
+        work_content,
+        worker_name,
+        work_group_name,
+        up_worker_name,
+        worker_level_name,
+        sum(duration) as duration,
+        sum(duration) / 3600 as duration_in_hour,
+        sum(work_num) as work_num_sum,
+        count(0) as work_content_cnt,
+        coalesce(sum(60/work_content_refer), 0) as sprm_sum,
+        inc_day
+        FROM
+        dm_dsc_smart.dwd_task
+        where duration != 0
+        and work_content not in ('无效时间', '转换时间')
+        and inc_day between '""" + start_date + "' and '" + end_date + """'
+        group by
+        station_name,
+        work_content,
+        worker_name,
+        work_group_name,
+        up_worker_name,
+        worker_level_name,
+        inc_day 
+        """
 
     print(sql2)
     coach2 = spark.sql(sql2).select("*").toPandas()
@@ -73,8 +92,8 @@ def run_etl(start_date, end_date ,env):
         # coach = pd.read_csv('./data/coach1129_1202.csv', sep = '\001')
         # coach = coach.dropna(how = 'all', axis = 1)
         # coach.columns = [re.sub('\w+\.', '', i) for i in list(coach.columns)]
-        coach = coach.dropna(how = 'all', axis = 1)
-        coach = coach.drop('raw_data', axis = 1)
+        # coach = coach.dropna(how = 'all', axis = 1)
+        # coach = coach.drop('raw_data', axis = 1)
         # time_convert()
         def time_convert(col):
             coach[col] = coach[col].astype(int)
@@ -83,25 +102,27 @@ def run_etl(start_date, end_date ,env):
         for i in ['start_time', 'end_time', 'hire_time']:
             time_convert(i)
         
+        coach['sprm'] = coach['sprm'].fillna(0)
         coach['start_time'] = pd.to_datetime(coach['start_time'])
         coach['end_time']   = pd.to_datetime(coach['end_time'])
-        coach = coach[~coach['work_content'].isna()]
-        coach = coach[coach['work_content'] != '无效时间']
-        coach = coach[coach['worker_post_name'] != '操作经理']
+        wh = coach
+        del coach
+        # coach = coach[~coach['work_content'].isna()]
+        # coach = coach[coach['work_content'] != '无效时间']
         # sprm calculation
-        coach['sprm'] = (60/coach['work_content_refer']).replace([np.inf, -np.inf], 0)
+        # coach['sprm'] = (60/coach['work_content_refer']).replace([np.inf, -np.inf], 0)
 
-        wh = coach.groupby([
-            'worker_name','inc_day', 'station_name', 'work_group_name',
-            ]).agg(
-            {
-                'start_time': 'min',
-                'end_time': 'max',
-                'duration':'sum',
-                'adjusted_duration': 'sum',
-                'sprm': 'sum',
-            }
-        ).reset_index()
+        # wh = coach.groupby([
+        #     'worker_name','inc_day', 'station_name', 'work_group_name',
+        #     ]).agg(
+        #     {
+        #         'start_time': 'min',
+        #         'end_time': 'max',
+        #         'duration':'sum',
+        #         'adjusted_duration': 'sum',
+        #         'sprm': 'sum',
+        #     }
+        # ).reset_index()
 
         wh['work_hour'] = wh['end_time'] - wh['start_time']
         # wh['work_hour_in_min']  = [i.total_seconds()/60 for i in wh['work_hour']]
@@ -113,12 +134,59 @@ def run_etl(start_date, end_date ,env):
         wh['sprm_perhour'] =  wh['tt_sprm'] / wh['tt_work_hour']
         return wh
     wh = data_prepare(coach)
-    wh['inc_day'] = wh['inc_day'].astype(str)
+    # wh['inc_day'] = wh['inc_day'].astype(str)
     df = coach2.merge(
         wh, on = ['station_name', 'worker_name', 'inc_day', 'work_group_name'], how = 'left')
- 
-    print("===============================data_mani_done================================")
+    df['inc_day'] = df['inc_day'].astype(int).astype(str)
+    df['hire_time'] = df['hire_time'] .astype(str)
+
+    print("===============================data_cols================================")
     print(df.columns)
+
+    df = df[['station_name',
+        'work_content',
+        'worker_name',
+        'work_group_name',
+        'up_worker_name',
+        'worker_level_name',
+        'hire_time',
+        'duration',
+        'duration_in_hour',
+        'work_num_sum',
+        'work_content_cnt',
+        'sprm_sum',
+        'tt_duration',
+        'tt_adj_duration',
+        'tt_sprm',
+        'tt_work_hour',
+        'tt_adj_duration_in_hour',
+        'sprm_perhour',
+        'inc_day',]]
+    
+
+    # df.columns = ['station_name',
+    #     'work_content',
+    #     'worker_name',
+    #     'work_group_name',
+    #     'up_worker_name',
+    #     'worker_level_name',
+    #     'hire_time',
+    #     'duration',
+    #     'duration_in_hour',
+    #     'work_num_sum',
+    #     'work_content_cnt',
+    #     'sprm_sum',
+    #     'tt_duration',
+    #     'tt_adj_duration',
+    #     'tt_sprm',
+    #     'tt_work_hour',
+    #     'tt_adj_duration_in_hour',
+    #     'sprm_perhour',
+    #     'inc_day']
+
+    print("===============================data_mani_done================================")
+    print(df.info())
+    
     """
     to bdp
     """
@@ -146,7 +214,7 @@ def run_etl(start_date, end_date ,env):
     spark.sql("""set spark.hadoop.hive.exec.dynamic.partition.mode=nonstrict""")
     # (table_name, df, pk_cols, order_cols, partition_cols=None):
     merge_data = MergeDFToTable(merge_table, inc_df, \
-        "worker_name,inc_day", "inc_day", partition_cols="inc_day")
+        "work_content,worker_name,inc_day", "inc_day", partition_cols="inc_day")
     merge_data.merge()
     
 

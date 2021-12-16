@@ -58,6 +58,27 @@ account_name
 ,report_date ,
 inc_day
 FROM dm_dsc_smart.dwd_task
-        where substr(station_name, 1,4) = 'COAC' 
-        and inc_day >= '20211129'
+ where substr(station_name, 1,4) = 'COAC' 
+ and inc_day >= '20211129'
  
+
+
+
+'station_name',
+'work_content',
+'worker_name',
+'work_group_name',
+'up_worker_name',
+'worker_level_name',
+'hire_time',
+'duration',
+'duration_in_hour',
+'work_num_sum',
+'work_content_cnt',
+'sprm_sum',
+'tt_duration',
+'tt_adj_duration',
+'tt_sprm',
+'tt_work_hour',
+'tt_adj_duration_in_hour',
+'sprm_perhour',

@@ -26,79 +26,99 @@ def run_etl(start_date, end_date ,env):
     """
     sql = """
         SELECT * FROM dm_dsc_smart.dwd_task
-        where substr(station_name, 1,4) = 'COAC' 
-        or substr(station_name, 1,4) = 'SIEM'
         and inc_day between '""" + start_date + "' and '" + end_date + """'
         """
     print(sql)
     coach = spark.sql(sql).select("*").toPandas()
+
+    sql2 = """
+    SELECT
+    station_name,
+    work_content,
+    worker_name,
+    work_group_name,
+    up_worker_name,
+    worker_level_name,
+    sum(duration) as duration,
+    sum(duration) / 3600 as duration_in_hour,
+    sum(work_num) as work_num_sum,
+    count(0) as work_content_cnt,
+    coalesce(sum(60/work_content_refer), 0) as sprm_sum,
+    inc_day
+    FROM
+    dm_dsc_smart.dwd_task
+    where
+    and duration != 0
+    and work_content not in ('无效时间', '转换时间')
+    and inc_day between '""" + start_date + "' and '" + end_date + """'
+    group by
+    station_name,
+    work_content,
+    worker_name,
+    work_group_name,
+    up_worker_name,
+    worker_level_name,
+    inc_day 
+    """
+
+    print(sql2)
+    coach2 = spark.sql(sql2).select("*").toPandas()
     print("==================================read_table================================")
     print(coach.head())
+        # where substr(station_name, 1,4) = 'COAC' 
+        # or substr(station_name, 1,4) = 'SIEM'
+        # station_name in ('SIEMENS SZV XXX WHS', 'COACH SHA WGQ WHS')
+ 
     def data_prepare(coach):
-
-        """
-        time unix convert, 
-        转换后标准时长换算成秒,
-        sprm 计算.
-        工作在勤时间
-        """
         # coach = pd.read_csv('./data/coach1129_1202.csv', sep = '\001')
         # coach = coach.dropna(how = 'all', axis = 1)
         # coach.columns = [re.sub('\w+\.', '', i) for i in list(coach.columns)]
-        
+        coach = coach.dropna(how = 'all', axis = 1)
         coach = coach.drop('raw_data', axis = 1)
+        # time_convert()
         def time_convert(col):
             coach[col] = coach[col].astype(int)
             coach[col] = [datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S') for i in coach[col]]
             return coach
         for i in ['start_time', 'end_time', 'hire_time']:
             time_convert(i)
+        
         coach['start_time'] = pd.to_datetime(coach['start_time'])
-        coach['end_time']   = pd.to_datetime(coach['end_time']) 
+        coach['end_time']   = pd.to_datetime(coach['end_time'])
         coach = coach[~coach['work_content'].isna()]
         coach = coach[coach['work_content'] != '无效时间']
         coach = coach[coach['worker_post_name'] != '操作经理']
         # sprm calculation
         coach['sprm'] = (60/coach['work_content_refer']).replace([np.inf, -np.inf], 0)
-    
-        wh = coach.groupby(['worker_name','inc_day']).agg(
+
+        wh = coach.groupby([
+            'worker_name','inc_day', 'station_name', 'work_group_name',
+            ]).agg(
             {
                 'start_time': 'min',
                 'end_time': 'max',
+                'duration':'sum',
+                'adjusted_duration': 'sum',
                 'sprm': 'sum',
             }
         ).reset_index()
-        
+
         wh['work_hour'] = wh['end_time'] - wh['start_time']
-        wh['work_hour_in_min']  = [i.total_seconds()/60 for i in wh['work_hour']]
-        wh['work_hour_in_hour'] = [i.total_seconds()/3600 for i in wh['work_hour']]
-        wh = wh.drop(['end_time','start_time', 'work_hour'], axis = 1).rename({'sprm':'SPRM_total_of_day'}, axis =1)
-        coach = coach.merge(wh, on = ['worker_name', 'inc_day'], how = 'inner')
-        # coach = coach[coach['duration'] != '0']
-        coach = coach[coach['sprm'] != 0]
-        coach['sprm_perhour'] =  coach['SPRM_total_of_day'] / coach['work_hour_in_hour']
-        """
-        计算转换后时间长度, 换算成 
-        秒
-        """
-        # coach = pd.concat([coach, pd.DataFrame(list(coach['adjusted_duration'].str.split(':')))], axis =1) 
-        # coach = coach[coach[[0,1,2]].astype(int).sum(axis = 1) != 0]
-        # coach[[0,1,2]] = coach[[0,1,2]].astype(int)
-        # coach['time_len'] = coach[0]*3600 + coach[1]*60 + coach[2]
-        # coach = coach.drop([0,1,2], axis = 1) 
-        
-        return coach
-    coach = data_prepare(coach)
-
-
-    coach_out = coach[['worker_name', 'work_group_name', 'up_worker_name', 'hire_time',\
-            'worker_post_name', 'SPRM_total_of_day', 'work_hour_in_min',
-            'work_hour_in_hour', 'sprm_perhour', 'station_name', 'inc_day']].drop_duplicates()
-    coach_out['inc_day'] = coach_out['inc_day'].astype(str)
-    df = coach
+        # wh['work_hour_in_min']  = [i.total_seconds()/60 for i in wh['work_hour']]
+        wh['tt_work_hour'] = [i.total_seconds()/3600 for i in wh['work_hour']]
+        wh['tt_adj_duration_in_hour']  = wh['adjusted_duration']/3600
+        wh = wh.drop(['end_time','start_time', 'work_hour'], axis = 1)
+        wh = wh.rename({'sprm':'tt_sprm', 'duration' : 'tt_duration', 'adjusted_duration': 'tt_adj_duration' }, axis =1 )
+        wh = wh[wh['tt_sprm'] != 0]
+        wh['sprm_perhour'] =  wh['tt_sprm'] / wh['tt_work_hour']
+        return wh
+    wh = data_prepare(coach)
+    wh['inc_day'] = wh['inc_day'].astype(str)
+    df = coach2.merge(
+        wh, on = ['station_name', 'worker_name', 'inc_day', 'work_group_name'], how = 'left')
+ 
     print("===============================data_mani_done================================")
-    print(df.head())
-
+    print(df.columns)
     """
     to bdp
     """

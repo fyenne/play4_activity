@@ -1,30 +1,46 @@
 /* backup */
 
+ 
+drop  table dsc_dws.dws_dsc_smart_work_efficiency_sum_di;
 
-drop table tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di;
 
-CREATE EXTERNAL TABLE `tmp_dsc_dws.dws_dsc_smart_work_efficiency_sum_di`(
-`worker_name` string COMMENT '',
-`work_group_name` string COMMENT '',
-`up_worker_name` string COMMENT '',
-`hire_time` string COMMENT '',
-`worker_post_name` string COMMENT '',
-`sprm_total_of_day` double COMMENT '',
-`work_hour_in_min` double COMMENT '',
-`work_hour_in_hour` double COMMENT '',
-`sprm_perhour` double COMMENT '',
-`station_name` string COMMENT '')
-COMMENT 'smart_activity_efficiency'
+CREATE EXTERNAL TABLE `dsc_dws.dws_dsc_smart_work_efficiency_sum_di`(
+station_name string comment ''
+,work_content string comment ''
+,worker_name string comment ''
+,work_group_name string comment ''
+,up_worker_name string comment ''
+,worker_level_name string comment ''
+,hire_time string comment ''
+,duration bigint comment ''
+,duration_in_hour double comment ''
+,work_num_sum double comment ''
+,work_content_cnt bigint comment ''
+,sprm_sum double comment ''
+,tt_duration double comment ''
+,tt_adj_duration double comment ''
+,tt_sprm double comment ''
+,tt_work_hour double comment ''
+,tt_adj_duration_in_hour double comment ''
+,sprm_perhour double comment ''
+)
+COMMENT 'smart summary 2'
 PARTITIONED BY (
-`inc_day` string COMMENT '日分区')
+`inc_day` string)
 ROW FORMAT SERDE
 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
+WITH SERDEPROPERTIES (
+'field.delim'='\u0001',
+'line.delim'='\n',
+'serialization.format'='\u0001')
 STORED AS INPUTFORMAT
 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat'
 OUTPUTFORMAT
 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat'
 
+ 
 
+ 
 
 
 
@@ -63,7 +79,7 @@ FROM dm_dsc_smart.dwd_task
  
 
 
-
+# col order. 
 'station_name',
 'work_content',
 'worker_name',

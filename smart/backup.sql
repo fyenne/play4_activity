@@ -4,7 +4,7 @@
 drop  table dsc_dws.dws_dsc_smart_work_efficiency_sum_di;
 
 
-CREATE EXTERNAL TABLE `dsc_dws.dws_dsc_smart_work_efficiency_sum_di`(
+CREATE TABLE `dsc_dws.dws_dsc_smart_work_efficiency_sum_di`(
 station_name string comment ''
 ,work_content string comment ''
 ,worker_name string comment ''

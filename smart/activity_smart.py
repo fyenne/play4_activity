@@ -19,8 +19,9 @@ import sys
 def run_etl(start_date, end_date ,env):
     # path = './cxm/'
     print("python version here:", sys.version, '\t') 
-    print("=================================sysVersion================================")
+    print("=================================env:: %s================================"%env)
     print("list dir", os.listdir())
+    print("list dir", env)
     """
     表一: 人天表. 总
     表二: 动作人表. 分
@@ -158,9 +159,9 @@ def run_etl(start_date, end_date ,env):
         'sprm_sum',
         'tt_duration',
         'tt_adj_duration',
+        'tt_adj_duration_in_hour',
         'tt_sprm',
         'tt_work_hour',
-        'tt_adj_duration_in_hour',
         'sprm_perhour',
         'inc_day',]]
     
@@ -207,6 +208,8 @@ def run_etl(start_date, end_date ,env):
     merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
     if env == 'dev':
         merge_table = "tmp_" + merge_table
+    else:
+        merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
     
     inc_df = spark.sql("""select * from df""")
     print("===============================merge_table=================================")
@@ -225,13 +228,13 @@ def main():
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
     args.add_argument("--end_date", help="start date for refresh data, format: yyyyMMdd"
                           , default=[(datetime.now()).strftime("%Y%m%d")], nargs="*")
-    args.add_argument("--env", help="dev environment or prod environment", default="dev", nargs="*")
+    args.add_argument("--env", help="dev environment or prod environment", default=["dev"], nargs="*")
 
     args_parse = args.parse_args()
     start_date = args_parse.start_date[0]
     end_date = args_parse.end_date[0]
     env = args_parse.env[0]
- 
+    print(env)
     run_etl(start_date, end_date, env)
 
     

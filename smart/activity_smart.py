@@ -36,11 +36,12 @@ def run_etl(start_date, end_date ,env):
         max(end_time) as end_time, 
         sum(duration) as duration, 
         sum(adjusted_duration) as adjusted_duration, 
-        coalesce(sum(60/work_content_refer), 0) as sprm 
+        coalesce(sum(60/work_content_refer), 0) as sprm
         FROM dm_dsc_smart.dwd_task
         where inc_day between '""" + start_date + "' and '" + end_date + """'
         and work_content != ''
         and work_content != '无效时间'
+        and duration != 0
         group by 
         worker_name, 
         inc_day, 

@@ -143,6 +143,8 @@ def run_etl(start_date, end_date ,env):
     df['hire_time'] = df['hire_time'] .astype(str)
     df['sprm_hour_day'] = df.groupby('worker_name')['tt_sprm'].transform('mean') \
         / df.groupby('worker_name')['tt_work_hour'].transform('mean')
+    
+    df = df.fillna(0)
 
     print("===============================data_cols================================")
     print(df.columns)

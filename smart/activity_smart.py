@@ -141,6 +141,8 @@ def run_etl(start_date, end_date ,env):
         wh, on = ['station_name', 'worker_name', 'inc_day', 'work_group_name'], how = 'left')
     df['inc_day'] = df['inc_day'].astype(int).astype(str)
     df['hire_time'] = df['hire_time'] .astype(str)
+    df['sprm_hour_day'] = df.groupby('worker_name')['tt_sprm'].transform('mean') \
+        / df.groupby('worker_name')['tt_work_hour'].transform('mean')
 
     print("===============================data_cols================================")
     print(df.columns)
@@ -163,6 +165,7 @@ def run_etl(start_date, end_date ,env):
         'tt_sprm',
         'tt_work_hour',
         'sprm_perhour',
+        'sprm_hour_day',
         'inc_day',]]
     
 

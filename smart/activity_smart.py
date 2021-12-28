@@ -40,8 +40,7 @@ def run_etl(start_date, end_date ,env):
         coalesce(sum(60/work_content_refer), 0) as sprm
         FROM dm_dsc_smart.dwd_task
         where inc_day between '""" + start_date + "' and '" + end_date + """'
-        and work_content != ''
-        and work_content not in ('无效时间', '转换时间')
+        and work_content != '' 
         and duration != 0
         group by 
         worker_name, 
@@ -69,8 +68,7 @@ def run_etl(start_date, end_date ,env):
         inc_day
         FROM
         dm_dsc_smart.dwd_task
-        where duration != 0
-        and work_content not in ('无效时间', '转换时间')
+        where duration != 0 
         and inc_day between '""" + start_date + "' and '" + end_date + """'
         group by
         station_name,

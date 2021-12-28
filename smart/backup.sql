@@ -98,3 +98,63 @@ FROM dm_dsc_smart.dwd_task
 'tt_work_hour',
 'tt_adj_duration_in_hour',
 'sprm_perhour',
+
+
+
+
+
+set mapreduce.map.memory.mb=8192;
+set mapreduce.map.java.opts=-Xmx6553m;
+set mapreduce.reduce.memory.mb=8192;
+set mapreduce.reduce.java.opts=-Xmx6533m;
+set mapred.map.tasks = 15;
+set mapred.reduce.tasks = 5;
+set hive.exec.dynamic.partition.mode=nonstrict;
+insert overwrite table dsc_dws.dws_dsc_smart_work_daily_sum_di 
+select
+  worker_name,
+  station_name,
+  avg(tt_sprm) as tt_sprm,
+  avg(tt_work_hour) as tt_work_hour,
+  (avg(tt_sprm) / avg(tt_work_hour)) as sprm_dt_hr
+from
+(
+select 
+worker_name,
+station_name,
+tt_sprm,
+coalesce(tt_work_hour, 0) as tt_work_hour, 
+inc_day,
+row_number() over (partition by   
+    worker_name,
+    station_name,
+    inc_day
+ ) as rn from 
+  dsc_dws.dws_dsc_smart_work_efficiency_sum_di
+  where inc_day > '20211201') aa
+  where aa.rn = 1
+group by
+  worker_name,
+  station_name
+  
+
+-- drop  table dsc_dws.dws_dsc_smart_work_daily_sum_di ;
+ 
+
+--  CREATE TABLE `dsc_dws.dws_dsc_smart_work_daily_sum_di`(
+-- `worker_name` string COMMENT '员工名称',
+-- `station_name` string COMMENT '站点名称',
+-- `tt_sprm` double COMMENT '',
+-- `tt_work_hour` double COMMENT '',
+-- `sprm_dt_hr` double COMMENT '')
+-- COMMENT 'smart汇总, 出报表数据'
+-- ROW FORMAT SERDE
+-- 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
+-- WITH SERDEPROPERTIES (
+-- 'field.delim'='\u0001',
+-- 'line.delim'='\n',
+-- 'serialization.format'='\u0001')
+-- STORED AS INPUTFORMAT
+-- 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat'
+-- OUTPUTFORMAT
+-- 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat'

@@ -41,7 +41,7 @@ def run_etl(start_date, end_date ,env):
         FROM dm_dsc_smart.dwd_task
         where inc_day between '""" + start_date + "' and '" + end_date + """'
         and work_content != ''
-        and work_content != '无效时间'
+        and work_content not in ('无效时间', '转换时间')
         and duration != 0
         group by 
         worker_name, 

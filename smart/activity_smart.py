@@ -210,7 +210,7 @@ def run_etl(start_date, end_date ,env):
 
     merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
     if env == 'dev':
-        merge_table =  merge_table
+        merge_table =  'tmp_' + merge_table
     else:
         merge_table = "dsc_dws.dws_dsc_smart_work_efficiency_sum_di"
     
